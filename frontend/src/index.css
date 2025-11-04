@@ -1,214 +1,107 @@
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+a:hover {
+  color: #535bf2;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+button:hover {
+  border-color: #646cff;
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+  a:hover {
+    color: #747bff;
+  }
+  button {
+    background-color: #f9f9f9;
+  }
+}
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ============================================= */
-/* TASTETRAIL BITESCORE – GLOBAL STYLES         */
-/* React + Tailwind v3+                          */
-/* ============================================= */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@500;600;700&display=swap');
 
-/* 1. GOOGLE FONTS */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@500;600;700&family=Space+Mono:wght@400;700&display=swap');
-
-/* 2. BASE LAYER – Global Resets & Typography */
 @layer base {
-  * {
-    @apply border-gray-200;
+  :root {
+    /* Light theme */
+    --color-primary: #FF9933;
+    --color-secondary: #006994;
+    --color-accent: #F4A261;
+    --color-bg: #FFFFFF;
+    --color-surface: #F8F9FA;
+    --color-text: #2D3748;
+    --color-border: #E2E8F0;
+  }
+
+  .dark {
+    /* Dark theme */
+    --color-primary: #1B4332;
+    --color-secondary: #3A506B;
+    --color-accent: #FF6F59;
+    --color-bg: #1A202C;
+    --color-surface: #2D3748;
+    --color-text: #F7FAFC;
+    --color-border: #4A5568;
   }
 
   body {
-    @apply font-sans antialiased bg-white text-slate-800;
-    font-feature-settings: 'rlig' 1, 'calt' 1;
-  }
-
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-heading font-bold text-trail-600;
-  }
-
-  /* Custom scrollbars */
-  ::-webkit-scrollbar {
-    width: 8px;
-  }
-  ::-webkit-scrollbar-track {
-    @apply bg-slate-100;
-  }
-  ::-webkit-scrollbar-thumb {
-    @apply bg-trail-400 rounded-full;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-trail-500;
+    @apply font-sans antialiased;
+    background-color: var(--color-bg);
+    color: var(--color-text);
   }
 }
 
-/* 3. COMPONENTS LAYER – Reusable UI */
 @layer components {
-  /* === BUTTONS === */
-  .btn {
-    @apply inline-flex items-center justify-center rounded-lg font-semibold 
-           transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 
-           disabled:opacity-60 disabled:cursor-not-allowed;
-  }
-
   .btn-primary {
-    @apply btn px-6 py-3 bg-trail-500 text-white hover:bg-trail-600 
-           focus:ring-trail-500 shadow-md hover:shadow-lg;
-  }
-
-  .btn-secondary {
-    @apply btn px-6 py-3 bg-ganga-500 text-white hover:bg-ganga-600 
-           focus:ring-ganga-500;
-  }
-
-  .btn-outline {
-    @apply btn px-6 py-3 border-2 border-trail-500 text-trail-500 
-           hover:bg-trail-500 hover:text-white focus:ring-trail-500;
-  }
-
-  .btn-ghost {
-    @apply btn px-4 py-2 text-slate-700 hover:bg-slate-100 
-           focus:ring-slate-400;
-  }
-
-  /* === INPUTS === */
-  .input-field {
-    @apply w-full px-4 py-3 border border-slate-300 rounded-lg 
-           focus:ring-2 focus:ring-trail-500 focus:border-trail-500 
-           transition-all duration-200 placeholder-slate-400 
-           bg-white text-slate-900;
-  }
-
-  .input-field-error {
-    @apply border-red-500 focus:ring-red-500 focus:border-red-500;
-  }
-
-  /* === CARDS === */
-  .card {
-    @apply bg-white rounded-xl shadow-card hover:shadow-card-hover 
-           transition-all duration-300 overflow-hidden border border-slate-100;
-  }
-
-  .card-compact {
-    @apply p-4;
-  }
-
-  /* Fixed: Remove nested @apply for card-restaurant */
-  .card-restaurant {
-    @apply bg-white rounded-xl shadow-card hover:shadow-card-hover 
-           transition-all duration-300 overflow-hidden border border-slate-100;
-  }
-
-  /* === BADGES === */
-  .badge {
-    @apply inline-flex items-center px-3 py-1 text-xs font-medium rounded-full;
-  }
-
-  .badge-saffron {
-    @apply bg-saffron-100 text-saffron-700;
-  }
-
-  .badge-teal {
-    @apply bg-ganga-100 text-ganga-700;
-  }
-
-  .badge-gold {
-    @apply bg-gold-100 text-gold-700;
-  }
-
-  /* === BITESCORE DISPLAY === */
-  .bitescore {
-    @apply inline-flex items-center gap-1 font-mono font-bold;
-  }
-
-  .bitescore-lg {
-    @apply text-3xl text-ganga-500;
-  }
-
-  .bitescore-sm {
-    @apply text-lg text-ganga-600;
-  }
-
-  /* === HERO & LAYOUT === */
-  .hero {
-    @apply py-16 px-6 text-center;
-  }
-
-  .hero-gradient {
-    @apply bg-gradient-to-br from-trail-500 to-ganga-500 text-white;
-  }
-
-  .container-narrow {
-    @apply max-w-5xl mx-auto;
-  }
-}
-
-/* 4. UTILITIES LAYER – Custom Helpers */
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
-
-  .gradient-trail {
-    background: linear-gradient(to right, #FF6B35, #e55a2b);
-  }
-
-  .gradient-ganga {
-    background: linear-gradient(to right, #00A896, #009684);
-  }
-
-  .star-filled {
-    color: #E9C46A;
-  }
-
-  .star-empty {
-    color: #dee2e6;
-  }
-
-  /* Flex helpers */
-  .flex-center {
-    @apply flex items-center justify-center;
-  }
-
-  .flex-between {
-    @apply flex items-center justify-between;
-  }
-}
-
-/* 5. DARK MODE SUPPORT - Use separate selectors instead of nesting */
-.dark .card {
-  @apply bg-slate-900 border-slate-800 text-white;
-}
-
-.dark .input-field {
-  @apply bg-slate-800 border-slate-700 text-white placeholder-slate-500 
-         focus:ring-trail-400 focus:border-trail-400;
-}
-
-.dark .btn-primary:hover {
-  @apply bg-trail-400;
-}
-
-/* 6. Custom range slider styles */
-.range-slider {
-  background: linear-gradient(to right, #FF6B35 0%, #FF6B35 var(--value), #dee2e6 var(--value), #dee2e6 100%);
-}
-
-.range-slider::-webkit-slider-thumb {
-  appearance: none;
-  height: 20px;
-  width: 20px;
-  border-radius: 50%;
-  background: #FF6B35;
-  cursor: pointer;
-  border: 2px solid #ffffff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.range-slider::-moz-range-thumb {
-  height: 20px;
-  width: 20px;
-  border-radius: 50%;
-  background: #FF6B35;
-  cursor: pointer;
-  border: 2px solid #ffffff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
+    @
