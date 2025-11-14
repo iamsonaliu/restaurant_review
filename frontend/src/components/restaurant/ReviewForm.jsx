@@ -28,7 +28,7 @@ export function ReviewForm({ restaurantId, onSuccess }) {
       if (onSuccess) onSuccess();
       setReviewText('');
     } catch (error) {
-      alert(error.response?.data?.error || 'Failed to submit review');
+      alert(error.message || error.error || 'Failed to submit review');
     } finally {
       setSubmitting(false);
     }

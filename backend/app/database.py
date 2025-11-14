@@ -8,6 +8,31 @@ from dotenv import load_dotenv
 # safe to load again - no-op if already loaded
 load_dotenv()
 
+# Try to initialize thick mode for older Oracle versions
+# This is required for Oracle XE 11g and earlier versions
+# The error DPY-3010 means we need thick mode
+try:
+    # Check if we're in thin mode
+    if oracledb.is_thin_mode():
+        # Try to switch to thick mode
+        # This will use Oracle Instant Client if installed
+        try:
+            oracledb.init_oracle_client()
+            print("✅ Initialized Oracle client in thick mode")
+        except Exception as e:
+            # If init_oracle_client fails, Instant Client might not be installed
+            # or might not be in PATH
+            error_msg = str(e)
+            if "DPY-3010" in error_msg or "thick mode" in error_msg.lower():
+                print("⚠️  Oracle Instant Client not found or not in PATH")
+                print("   Please install Oracle Instant Client for Oracle XE 11g")
+                print("   See: backend/ORACLE_CLIENT_SETUP.md for instructions")
+            else:
+                print(f"⚠️  Could not initialize thick mode: {e}")
+except Exception:
+    # If already in thick mode or other issue, continue
+    pass
+
 class Database:
     def __init__(self):
         self.user = os.getenv('ORACLE_USER')
@@ -49,7 +74,13 @@ class Database:
 
     def get_connection(self):
         if not self.pool:
-            raise RuntimeError("Database pool not initialized. Call db.connect() first.")
+            # Try to connect if pool doesn't exist
+            if not self.connect():
+                raise RuntimeError(
+                    "Database pool not initialized. "
+                    "Please check your .env file and ensure the database is running. "
+                    f"User: {self.user}, DSN: {self.dsn}"
+                )
         return self.pool.acquire()
     def _dict_from_cursor(self, cursor):
         """Convert cursor.description + rows -> list[dict]"""
@@ -63,10 +94,11 @@ class Database:
         result = [dict(zip(cols, row)) for row in rows]
         return result
 
-    def execute_query(self, sql, params=None):
+    def execute_query(self, sql, params=None, fetch_one=False):
         """
         Run a SELECT or other query that returns rows.
         Returns: list of dicts (column names lowercased) or empty list.
+        If fetch_one=True, returns single dict or None.
         """
         conn = None
         cursor = None
@@ -81,6 +113,9 @@ class Database:
             data = self._dict_from_cursor(cursor)
             cursor.close()
             conn.close()  # returns connection to pool
+            
+            if fetch_one:
+                return data[0] if data else None
             return data
         except Exception as e:
             # print traceback for server logs (helps debugging)

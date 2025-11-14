@@ -12,12 +12,14 @@ def create_app():
     CORS(app, 
          resources={r"/api/*": {
              "origins": app.config['CORS_ORIGINS'],
-             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-             "allow_headers": ["Content-Type", "Authorization"],
+             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+             "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"],
              "expose_headers": ["Content-Type", "Authorization"],
              "supports_credentials": True,
              "max_age": 3600
-         }})
+         }},
+         allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+         supports_credentials=True)
     
     # Connect to database
     print("\n🔌 Initializing database connection...")
@@ -45,19 +47,35 @@ def create_app():
     # Health check endpoint
     @app.route('/api/health')
     def health():
-        try:
-            # Test database connection
-            result = db.execute_query("SELECT 1 FROM DUAL", fetch_one=True)
-            db_status = "connected" if result else "disconnected"
-        except Exception as e:
-            db_status = f"error: {str(e)}"
+        db_status = "disconnected"
+        db_error = None
         
-        return jsonify({
+        # Check if pool exists
+        if not db.pool:
+            db_status = "disconnected (pool not initialized)"
+        else:
+            try:
+                # Test database connection
+                result = db.execute_query("SELECT 1 FROM DUAL", fetch_one=True)
+                db_status = "connected" if result else "disconnected"
+            except RuntimeError as e:
+                db_status = "disconnected"
+                db_error = str(e)
+            except Exception as e:
+                db_status = f"error: {str(e)}"
+                db_error = str(e)
+        
+        response = {
             'status': 'ok',
             'message': 'DineWise API is running',
             'database': db_status,
             'version': '1.0.0'
-        }), 200
+        }
+        
+        if db_error:
+            response['database_error'] = db_error
+        
+        return jsonify(response), 200
     
     # Root endpoint
     @app.route('/')

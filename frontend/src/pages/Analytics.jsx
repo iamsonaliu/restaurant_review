@@ -19,25 +19,26 @@ export default function Analytics() {
         analyticsAPI.getCityStats()
       ]);
 
-      setTopRated(topRatedRes.data);
-      setCityStats(cityRes.data);
+      const topRated = Array.isArray(topRatedRes) ? topRatedRes : [];
+      const cityStats = Array.isArray(cityRes) ? cityRes : [];
+      
+      setTopRated(topRated);
+      setCityStats(cityStats);
 
       // Generate cuisine stats from restaurants
       const cuisines = {};
-      topRatedRes.data.forEach(r => {
-        r.cuisines?.forEach(c => {
-          cuisines[c] = (cuisines[c] || 0) + 1;
-        });
+      topRated.forEach(r => {
+        // Note: topRated from analytics API may not have cuisines
+        // We'll need to fetch full restaurant details if needed
       });
       
-      const cuisineArray = Object.entries(cuisines)
-        .map(([name, count]) => ({ name, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 6);
-      
-      setCuisineStats(cuisineArray);
+      // For now, set empty cuisine stats or fetch separately
+      setCuisineStats([]);
     } catch (error) {
       console.error('Error fetching analytics:', error);
+      setTopRated([]);
+      setCityStats([]);
+      setCuisineStats([]);
     } finally {
       setLoading(false);
     }
@@ -105,7 +106,7 @@ export default function Analytics() {
                 </div>
                 <h3 className="text-2xl font-bold mb-2">{city.city}</h3>
                 <div className="text-3xl font-bold text-gradient mb-2">
-                  {city.restaurant_count}
+                  {city.total_restaurants || city.restaurant_count || 0}
                 </div>
                 <p className="opacity-70">Restaurants</p>
                 <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--border)' }}>

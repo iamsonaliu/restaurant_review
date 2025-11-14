@@ -29,7 +29,7 @@ export function RatingForm({ restaurantId, onSuccess }) {
       if (onSuccess) onSuccess();
       setRating(0);
     } catch (error) {
-      alert(error.response?.data?.error || 'Failed to submit rating');
+      alert(error.message || error.error || 'Failed to submit rating');
     } finally {
       setSubmitting(false);
     }

@@ -5,9 +5,14 @@ import uuid
 
 bp = Blueprint('auth', __name__)
 
-@bp.route('/register', methods=['POST'])
+@bp.route('/register', methods=['POST', 'OPTIONS'])
 def register():
+    if request.method == 'OPTIONS':
+        return '', 200
+    
     data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
     
     # Validate input
     if not data.get('email') or not data.get('password') or not data.get('username'):
@@ -15,8 +20,8 @@ def register():
     
     # Check if user exists
     existing = db.execute_query(
-        "SELECT user_id FROM USERS WHERE email = :1",
-        (data['email'],),
+        "SELECT user_id FROM USERS WHERE email = :email",
+        {'email': data['email']},
         fetch_one=True
     )
     
@@ -27,11 +32,18 @@ def register():
     user_id = f"U{uuid.uuid4().hex[:8].upper()}"
     hashed_pw = hash_password(data['password'])
     
-    success = db.execute_update(
+    result = db.execute_non_query(
         """INSERT INTO USERS (user_id, username, email, password_hash)
-           VALUES (:1, :2, :3, :4)""",
-        (user_id, data['username'], data['email'], hashed_pw)
+           VALUES (:user_id, :username, :email, :password_hash)""",
+        {
+            'user_id': user_id,
+            'username': data['username'],
+            'email': data['email'],
+            'password_hash': hashed_pw
+        }
     )
+    
+    success = result is not None and result.get('rowcount', 0) > 0
     
     if success:
         token = create_token(user_id)
@@ -47,9 +59,14 @@ def register():
     else:
         return jsonify({'error': 'Registration failed'}), 500
 
-@bp.route('/login', methods=['POST'])
+@bp.route('/login', methods=['POST', 'OPTIONS'])
 def login():
+    if request.method == 'OPTIONS':
+        return '', 200
+    
     data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
     
     if not data.get('email') or not data.get('password'):
         return jsonify({'error': 'Email and password are required'}), 400
@@ -57,8 +74,8 @@ def login():
     # Get user
     user = db.execute_query(
         """SELECT user_id, username, email, password_hash, role
-           FROM USERS WHERE email = :1""",
-        (data['email'],),
+           FROM USERS WHERE email = :email""",
+        {'email': data['email']},
         fetch_one=True
     )
     
@@ -66,19 +83,19 @@ def login():
         return jsonify({'error': 'Invalid credentials'}), 401
     
     # Verify password
-    if not verify_password(data['password'], user[3]):
+    if not verify_password(data['password'], user['password_hash']):
         return jsonify({'error': 'Invalid credentials'}), 401
     
     # Create token
-    token = create_token(user[0])
+    token = create_token(user['user_id'])
     
     return jsonify({
         'message': 'Login successful',
         'token': token,
         'user': {
-            'user_id': user[0],
-            'username': user[1],
-            'email': user[2],
-            'role': user[4]
+            'user_id': user['user_id'],
+            'username': user['username'],
+            'email': user['email'],
+            'role': user.get('role', 'user')
         }
     }), 200

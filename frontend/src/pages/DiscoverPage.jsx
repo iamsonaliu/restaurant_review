@@ -36,9 +36,11 @@ export default function DiscoverPage() {
       if (filters.search) params.search = filters.search;
       
       const response = await restaurantAPI.getAll(params);
-      setRestaurants(response.data);
+      // API returns { restaurants: [], total: number, ... }
+      setRestaurants(response.restaurants || response || []);
     } catch (error) {
       console.error('Error fetching restaurants:', error);
+      setRestaurants([]);
     } finally {
       setLoading(false);
     }
@@ -47,18 +49,20 @@ export default function DiscoverPage() {
   const fetchCategories = async () => {
     try {
       const response = await restaurantAPI.getCategories();
-      setCategories(response.data);
+      setCategories(Array.isArray(response) ? response : []);
     } catch (error) {
       console.error('Error fetching categories:', error);
+      setCategories([]);
     }
   };
 
   const fetchCities = async () => {
     try {
       const response = await restaurantAPI.getCities();
-      setCities(response.data);
+      setCities(Array.isArray(response) ? response : []);
     } catch (error) {
       console.error('Error fetching cities:', error);
+      setCities([]);
     }
   };
 

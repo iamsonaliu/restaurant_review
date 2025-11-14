@@ -20,9 +20,10 @@ export default function RestaurantDetail() {
   const fetchRestaurantDetails = async () => {
     try {
       const response = await restaurantAPI.getById(id);
-      setRestaurant(response.data);
+      setRestaurant(response || null);
     } catch (error) {
       console.error('Error fetching restaurant:', error);
+      setRestaurant(null);
     } finally {
       setLoading(false);
     }
@@ -31,9 +32,10 @@ export default function RestaurantDetail() {
   const fetchReviews = async () => {
     try {
       const response = await reviewAPI.getByRestaurant(id);
-      setReviews(response.data);
+      setReviews(Array.isArray(response) ? response : []);
     } catch (error) {
       console.error('Error fetching reviews:', error);
+      setReviews([]);
     }
   };
 

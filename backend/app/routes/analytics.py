@@ -6,24 +6,43 @@ bp = Blueprint('analytics', __name__)
 @bp.route('/top-rated', methods=['GET'])
 def top_rated():
     """Get top rated restaurants"""
-    query = """
-        SELECT restaurant_id, name, city, avg_rating, votes
-        FROM RESTAURANTS
-        WHERE votes >= 5
-        ORDER BY avg_rating DESC, votes DESC
-        FETCH FIRST 10 ROWS ONLY
-    """
-    
-    restaurants = db.execute_query(query)
+    try:
+        # Use ROWNUM for Oracle 11g compatibility
+        query = """
+            SELECT * FROM (
+                SELECT restaurant_id, name, city, avg_rating, votes
+                FROM RESTAURANTS
+                WHERE votes >= 4
+                ORDER BY avg_rating DESC, votes DESC
+            ) WHERE ROWNUM <= 10
+        """
+        
+        restaurants = db.execute_query(query)
+        
+        if restaurants is None:
+            print("ERROR: top_rated query returned None")
+            return jsonify({'error': 'Database query failed'}), 500
+        
+        if not isinstance(restaurants, list):
+            print(f"ERROR: Expected list, got {type(restaurants)}")
+            return jsonify({'error': 'Database query failed', 'message': 'Invalid data format'}), 500
+    except Exception as query_error:
+        print(f"ERROR in top_rated query: {query_error}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'error': 'Database query failed',
+            'message': f'Query execution error: {str(query_error)}'
+        }), 500
     
     result = []
     for r in restaurants:
         result.append({
-            'restaurant_id': r[0],
-            'name': r[1],
-            'city': r[2],
-            'avg_rating': float(r[3]),
-            'votes': r[4]
+            'restaurant_id': r['restaurant_id'],
+            'name': r['name'],
+            'city': r['city'],
+            'avg_rating': float(r['avg_rating']) if r.get('avg_rating') else 0,
+            'votes': int(r['votes']) if r.get('votes') else 0
         })
     
     return jsonify(result), 200
@@ -43,13 +62,16 @@ def city_stats():
     
     stats = db.execute_query(query)
     
+    if stats is None:
+        return jsonify({'error': 'Database query failed'}), 500
+    
     result = []
     for s in stats:
         result.append({
-            'city': s[0],
-            'total_restaurants': s[1],
-            'avg_rating': float(s[2]) if s[2] else 0,
-            'total_votes': s[3]
+            'city': s['city'],
+            'total_restaurants': int(s['total_restaurants']) if s.get('total_restaurants') else 0,
+            'avg_rating': float(s['avg_city_rating']) if s.get('avg_city_rating') else 0,
+            'total_votes': int(s['total_votes']) if s.get('total_votes') else 0
         })
     
     return jsonify(result), 200

@@ -1,5 +1,5 @@
 import { createContext, useState, useEffect, useContext } from 'react';
-import axios from 'axios';
+import { authAPI } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -20,61 +20,61 @@ export const AuthProvider = ({ children }) => {
     const userData = localStorage.getItem('user');
     
     if (token && userData) {
-      setUser(JSON.parse(userData));
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      try {
+        setUser(JSON.parse(userData));
+      } catch (e) {
+        console.error('Error parsing user data:', e);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
     }
     setLoading(false);
   }, []);
 
   const login = async (email, password) => {
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/login', {
-        email,
-        password
-      });
+      const data = await authAPI.login(email, password);
       
-      const { token, user } = response.data;
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      setUser(user);
+      if (data && data.token) {
+        setUser(data.user);
+        return { success: true };
+      }
       
-      return { success: true };
+      return {
+        success: false,
+        error: 'Login failed - invalid response'
+      };
     } catch (error) {
       return {
         success: false,
-        error: error.response?.data?.error || 'Login failed'
+        error: error.message || 'Login failed'
       };
     }
   };
 
   const register = async (username, email, password) => {
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/register', {
-        username,
-        email,
-        password
-      });
+      const data = await authAPI.register(username, email, password);
       
-      const { token, user } = response.data;
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      setUser(user);
+      if (data && data.token) {
+        setUser(data.user);
+        return { success: true };
+      }
       
-      return { success: true };
+      return {
+        success: false,
+        error: 'Registration failed - invalid response'
+      };
     } catch (error) {
       return {
         success: false,
-        error: error.response?.data?.error || 'Registration failed'
+        error: error.message || 'Registration failed'
       };
     }
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    delete axios.defaults.headers.common['Authorization'];
+    authAPI.logout();
     setUser(null);
   };
 

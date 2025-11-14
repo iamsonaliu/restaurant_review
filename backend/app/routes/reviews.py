@@ -13,21 +13,24 @@ def get_reviews(restaurant_id):
                r.review_date, r.helpful_count
         FROM REVIEWS r
         JOIN USERS u ON r.user_id = u.user_id
-        WHERE r.restaurant_id = :1
+        WHERE r.restaurant_id = :restaurant_id
         ORDER BY r.review_date DESC
     """
     
-    reviews = db.execute_query(query, (restaurant_id,))
+    reviews = db.execute_query(query, {'restaurant_id': restaurant_id})
+    
+    if reviews is None:
+        return jsonify({'error': 'Database query failed'}), 500
     
     result = []
     for r in reviews:
         result.append({
-            'review_id': r[0],
-            'user_id': r[1],
-            'username': r[2],
-            'review_text': r[3],
-            'review_date': r[4].strftime('%Y-%m-%d') if r[4] else None,
-            'helpful_count': r[5]
+            'review_id': r['review_id'],
+            'user_id': r['user_id'],
+            'username': r['username'],
+            'review_text': r['review_text'],
+            'review_date': r['review_date'].strftime('%Y-%m-%d') if r.get('review_date') else None,
+            'helpful_count': int(r.get('helpful_count', 0))
         })
     
     return jsonify(result), 200
@@ -43,11 +46,18 @@ def create_review():
     
     review_id = f"REV{uuid.uuid4().hex[:8].upper()}"
     
-    success = db.execute_update(
+    result = db.execute_non_query(
         """INSERT INTO REVIEWS (review_id, user_id, restaurant_id, review_text)
-           VALUES (:1, :2, :3, :4)""",
-        (review_id, request.user_id, data['restaurant_id'], data['review_text'])
+           VALUES (:review_id, :user_id, :restaurant_id, :review_text)""",
+        {
+            'review_id': review_id,
+            'user_id': request.user_id,
+            'restaurant_id': data['restaurant_id'],
+            'review_text': data['review_text']
+        }
     )
+    
+    success = result is not None and result.get('rowcount', 0) > 0
     
     if success:
         return jsonify({'message': 'Review created successfully', 'review_id': review_id}), 201

@@ -23,19 +23,23 @@ export default function Dashboard() {
     try {
       // Fetch user's ratings
       const ratingsResponse = await ratingAPI.getUserRatings();
-      setRecentRatings(ratingsResponse.data.slice(0, 5));
+      const ratings = Array.isArray(ratingsResponse) ? ratingsResponse : [];
+      setRecentRatings(ratings.slice(0, 5));
       
       // Fetch recommendations
       const recsResponse = await restaurantAPI.getAll({ limit: 4 });
-      setRecommendations(recsResponse.data);
+      const restaurants = recsResponse.restaurants || recsResponse || [];
+      setRecommendations(Array.isArray(restaurants) ? restaurants : []);
 
       setStats({
-        ratingsCount: ratingsResponse.data.length,
+        ratingsCount: ratings.length,
         reviewsCount: 0,
         favoriteCity: 'Dehradun'
       });
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
+      setRecentRatings([]);
+      setRecommendations([]);
     } finally {
       setLoading(false);
     }
