@@ -9,7 +9,8 @@ bp = Blueprint('reviews', __name__)
 def get_reviews(restaurant_id):
     """Get reviews for a restaurant"""
     query = """
-        SELECT r.review_id, r.user_id, u.username, r.review_text,
+        SELECT r.review_id, r.user_id, u.username, 
+               TO_CHAR(r.review_text) as review_text,
                r.review_date, r.helpful_count
         FROM REVIEWS r
         JOIN USERS u ON r.user_id = u.user_id

@@ -65,6 +65,14 @@ export default function RestaurantDetail() {
     return 'bg-orange-500';
   };
 
+  const getPriceDisplay = (price) => {
+    if (!price) return 2;
+    if (price < 500) return 1;
+    if (price < 1000) return 2;
+    if (price < 2000) return 3;
+    return 4;
+  };
+
   return (
     <div className="restaurant-detail py-8 px-4">
       <div className="container-custom">
@@ -80,19 +88,21 @@ export default function RestaurantDetail() {
         {/* Header */}
         <div className="card mb-8">
           <div className="flex flex-col md:flex-row gap-6">
-            <div className="w-full md:w-48 h-48 rounded-lg bg-gradient-to-br from-orange-400 to-pink-600 flex items-center justify-center text-7xl flex-shrink-0">
+            <div className="w-full md:w-48 h-48 rounded-lg bg-gradient-to-br from-orange-100 to-pink-100 dark:from-orange-900 dark:to-pink-900 flex items-center justify-center text-7xl flex-shrink-0">
               🍽️
             </div>
 
             <div className="flex-1">
               <h1 className="text-4xl font-bold mb-4">{restaurant.name}</h1>
               
-              <div className="flex flex-wrap gap-4 mb-4">
-                <div className={`${getRatingColor(restaurant.avg_rating)} text-white px-4 py-2 rounded-lg font-bold text-lg`}>
-                  ⭐ {restaurant.avg_rating?.toFixed(1) || 'N/A'}
+              <div className="flex flex-wrap gap-3 mb-4">
+                <div className={`${getRatingColor(restaurant.avg_rating)} text-white px-4 py-2 rounded-lg font-bold text-lg flex items-center gap-1`}>
+                  <span>★</span>
+                  <span>{restaurant.avg_rating?.toFixed(1) || 'N/A'}</span>
                 </div>
-                <div className="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
-                  📍 {restaurant.city}
+                <div className="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center gap-2">
+                  <span>📍</span>
+                  <span>{restaurant.city}</span>
                 </div>
                 {restaurant.dining_type && (
                   <div className="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
@@ -109,16 +119,54 @@ export default function RestaurantDetail() {
                 ))}
               </div>
 
-              <div className="text-lg opacity-80 mb-4">
-                <p>💰 Price Range: {'₹'.repeat(Math.min(4, Math.floor((restaurant.price_range || 500) / 500) + 1))}</p>
-                <p>👥 {restaurant.votes} votes</p>
+              <div className="space-y-2 mb-4 text-sm opacity-80">
+                <div className="flex items-center gap-2">
+                  <span>💰</span>
+                  <span>Price Level:</span>
+                  <div className="flex items-center gap-0.5">
+                    {[...Array(4)].map((_, i) => (
+                      <span 
+                        key={i} 
+                        className={`${i < getPriceDisplay(restaurant.price_range) ? 'text-orange-500' : 'text-gray-300 dark:text-gray-600'}`}
+                      >
+                        ●
+                      </span>
+                    ))}
+                  </div>
+                  <span className="text-xs opacity-60">(₹{restaurant.price_range || 500} for two)</span>
+                </div>
+                <p>👥 {restaurant.votes} ratings</p>
               </div>
 
               {restaurant.address && (
-                <p className="opacity-70">
+                <p className="opacity-70 mb-4 text-sm">
                   📍 {restaurant.address}
                 </p>
               )}
+
+              {/* Action buttons */}
+              <div className="flex flex-wrap gap-3">
+                {restaurant.website_url && restaurant.website_url.trim() !== '' && (
+                  <a
+                    href={restaurant.website_url.startsWith('http') ? restaurant.website_url : `https://${restaurant.website_url}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-primary flex items-center gap-2"
+                  >
+                    <span>🌐</span>
+                    <span>Visit Website</span>
+                  </a>
+                )}
+                {restaurant.phone_number && (
+                  <a
+                    href={`tel:${restaurant.phone_number}`}
+                    className="btn btn-outline flex items-center gap-2"
+                  >
+                    <span>📞</span>
+                    <span>Call</span>
+                  </a>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -174,28 +222,30 @@ export default function RestaurantDetail() {
 
             <div className="card">
               <h3 className="text-2xl font-bold mb-4">Quick Info</h3>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div className="flex items-start gap-3">
                   <span className="text-2xl">🍽️</span>
                   <div>
                     <p className="font-medium">Cuisines</p>
-                    <p className="opacity-70">{restaurant.cuisines?.join(', ')}</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <span className="text-2xl">💰</span>
-                  <div>
-                    <p className="font-medium">Average Cost</p>
-                    <p className="opacity-70">₹{restaurant.price_range || 500} for two</p>
+                    <p className="opacity-70 text-sm">{restaurant.cuisines?.join(', ')}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
                   <span className="text-2xl">📍</span>
                   <div>
                     <p className="font-medium">Location</p>
-                    <p className="opacity-70">{restaurant.city}</p>
+                    <p className="opacity-70 text-sm">{restaurant.city}, {restaurant.region || 'Uttarakhand'}</p>
                   </div>
                 </div>
+                {restaurant.timings && (
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">🕐</span>
+                    <div>
+                      <p className="font-medium">Timings</p>
+                      <p className="opacity-70 text-sm">{restaurant.timings}</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -208,7 +258,7 @@ export default function RestaurantDetail() {
                 {reviews.map((review) => (
                   <div key={review.review_id} className="card">
                     <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-r from-orange-400 to-pink-600 flex items-center justify-center text-white font-bold text-lg">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-r from-orange-400 to-pink-600 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
                         {review.username?.charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1">

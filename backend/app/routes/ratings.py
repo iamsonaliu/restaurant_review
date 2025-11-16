@@ -29,17 +29,18 @@ def create_rating():
         if existing:
             # Update existing rating
             result = db.execute_non_query(
-                "UPDATE RATINGS SET rating_value = :rating_value WHERE rating_id = :rating_id",
+                """UPDATE RATINGS 
+                   SET rating_value = :rating_value, rating_date = SYSDATE 
+                   WHERE rating_id = :rating_id""",
                 {'rating_value': rating_value, 'rating_id': existing['rating_id']}
             )
-            success = result is not None and result.get('rowcount', 0) > 0
             message = 'Rating updated successfully'
         else:
             # Create new rating
             rating_id = f"RAT{uuid.uuid4().hex[:8].upper()}"
             result = db.execute_non_query(
-                """INSERT INTO RATINGS (rating_id, user_id, restaurant_id, rating_value)
-                   VALUES (:rating_id, :user_id, :restaurant_id, :rating_value)""",
+                """INSERT INTO RATINGS (rating_id, user_id, restaurant_id, rating_value, rating_date)
+                   VALUES (:rating_id, :user_id, :restaurant_id, :rating_value, SYSDATE)""",
                 {
                     'rating_id': rating_id,
                     'user_id': request.user_id,
@@ -47,14 +48,13 @@ def create_rating():
                     'rating_value': rating_value
                 }
             )
-            success = result is not None and result.get('rowcount', 0) > 0
             message = 'Rating created successfully'
         
-        if success:
+        if result and result.get('rowcount', 0) > 0:
             return jsonify({'message': message}), 201
         else:
-            print(f"ERROR: Rating insert/update failed. Result: {result}")
-            return jsonify({'error': 'Failed to submit rating', 'message': 'Database operation returned no rows affected'}), 500
+            return jsonify({'error': 'Failed to submit rating'}), 500
+            
     except Exception as e:
         print(f"ERROR in create_rating: {e}")
         import traceback
