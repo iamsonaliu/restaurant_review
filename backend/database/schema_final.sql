@@ -1,44 +1,40 @@
 -- ============================================
--- DINEWISE DATABASE SCHEMA - ORACLE 11G
--- Final Version with Zomato Integration
+-- DINEWISE DATABASE SCHEMA (Oracle 11g Compatible)
 -- ============================================
 
--- Drop existing tables (clean slate)
-DROP TABLE REVIEWS CASCADE CONSTRAINTS;
-DROP TABLE RATINGS CASCADE CONSTRAINTS;
-DROP TABLE RESTAURANT_CATEGORIES CASCADE CONSTRAINTS;
-DROP TABLE CATEGORIES CASCADE CONSTRAINTS;
-DROP TABLE RESTAURANTS CASCADE CONSTRAINTS;
-DROP TABLE USERS CASCADE CONSTRAINTS;
-
--- Drop sequences
-BEGIN
-   EXECUTE IMMEDIATE 'DROP SEQUENCE user_seq';
-EXCEPTION WHEN OTHERS THEN NULL;
-END;
+-- ============================================
+-- DROP TABLES (if exist)
+-- ============================================
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE REVIEWS CASCADE CONSTRAINTS'; EXCEPTION WHEN OTHERS THEN NULL; END;
 /
-BEGIN
-   EXECUTE IMMEDIATE 'DROP SEQUENCE restaurant_seq';
-EXCEPTION WHEN OTHERS THEN NULL;
-END;
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE RATINGS CASCADE CONSTRAINTS'; EXCEPTION WHEN OTHERS THEN NULL; END;
 /
-BEGIN
-   EXECUTE IMMEDIATE 'DROP SEQUENCE category_seq';
-EXCEPTION WHEN OTHERS THEN NULL;
-END;
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE RESTAURANT_CATEGORIES CASCADE CONSTRAINTS'; EXCEPTION WHEN OTHERS THEN NULL; END;
 /
-BEGIN
-   EXECUTE IMMEDIATE 'DROP SEQUENCE review_seq';
-EXCEPTION WHEN OTHERS THEN NULL;
-END;
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE CATEGORIES CASCADE CONSTRAINTS'; EXCEPTION WHEN OTHERS THEN NULL; END;
 /
-BEGIN
-   EXECUTE IMMEDIATE 'DROP SEQUENCE rating_seq';
-EXCEPTION WHEN OTHERS THEN NULL;
-END;
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE RESTAURANTS CASCADE CONSTRAINTS'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TABLE USERS CASCADE CONSTRAINTS'; EXCEPTION WHEN OTHERS THEN NULL; END;
 /
 
--- Create sequences
+-- ============================================
+-- DROP SEQUENCES (if exist)
+-- ============================================
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE user_seq'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE restaurant_seq'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE category_seq'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE review_seq'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE rating_seq'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+
+-- ============================================
+-- CREATE SEQUENCES
+-- ============================================
 CREATE SEQUENCE user_seq START WITH 1 INCREMENT BY 1;
 CREATE SEQUENCE restaurant_seq START WITH 1001 INCREMENT BY 1;
 CREATE SEQUENCE category_seq START WITH 1 INCREMENT BY 1;
@@ -58,7 +54,7 @@ CREATE TABLE USERS (
 );
 
 -- ============================================
--- RESTAURANTS TABLE (Updated for Zomato)
+-- RESTAURANTS TABLE
 -- ============================================
 CREATE TABLE RESTAURANTS (
     restaurant_id VARCHAR2(36) PRIMARY KEY,
@@ -73,7 +69,7 @@ CREATE TABLE RESTAURANTS (
     dining_type VARCHAR2(50),
     timings VARCHAR2(100),
     votes NUMBER(10,0) DEFAULT 0,
-    rating_type VARCHAR2(50),  -- Very Good, Good, etc.
+    rating_type VARCHAR2(50),
     created_at DATE DEFAULT SYSDATE
 );
 
@@ -125,54 +121,72 @@ CREATE TABLE RATINGS (
 );
 
 -- ============================================
--- INDEXES FOR PERFORMANCE
+-- INDEXES (no duplicates)
 -- ============================================
 CREATE INDEX idx_restaurant_city ON RESTAURANTS(city);
-CREATE INDEX idx_restaurant_rating ON RESTAURANTS(avg_rating DESC);
+CREATE INDEX idx_restaurant_rating ON RESTAURANTS(avg_rating);
 CREATE INDEX idx_restaurant_name ON RESTAURANTS(name);
+
 CREATE INDEX idx_review_restaurant ON REVIEWS(restaurant_id);
 CREATE INDEX idx_review_user ON REVIEWS(user_id);
+
 CREATE INDEX idx_rating_restaurant ON RATINGS(restaurant_id);
 CREATE INDEX idx_rating_user ON RATINGS(user_id);
-CREATE INDEX idx_category_name ON CATEGORIES(category_name);
+
+-- DO NOT ADD: idx_category_name (unique index already created by UNIQUE constraint)
 
 -- ============================================
--- TRIGGER: Auto-update avg_rating on RATINGS change
+-- COMPOUND TRIGGER (fixes mutating table error)
 -- ============================================
 CREATE OR REPLACE TRIGGER trg_update_avg_rating
-AFTER INSERT OR UPDATE OR DELETE ON RATINGS
-FOR EACH ROW
-DECLARE
-    v_restaurant_id VARCHAR2(36);
-    v_avg_rating NUMBER(3,2);
-    v_vote_count NUMBER(10,0);
+FOR INSERT OR UPDATE OR DELETE ON ratings
+COMPOUND TRIGGER
+
+    TYPE t_rest_list IS TABLE OF ratings.restaurant_id%TYPE;
+    g_rest_ids t_rest_list := t_rest_list();
+
+AFTER EACH ROW IS
 BEGIN
-    -- Determine restaurant_id
-    IF INSERTING OR UPDATING THEN
-        v_restaurant_id := :NEW.restaurant_id;
+    IF INSERTING THEN
+        g_rest_ids.EXTEND;
+        g_rest_ids(g_rest_ids.LAST) := :NEW.restaurant_id;
+
+    ELSIF UPDATING THEN
+        g_rest_ids.EXTEND;
+        g_rest_ids(g_rest_ids.LAST) := :NEW.restaurant_id;
+
     ELSIF DELETING THEN
-        v_restaurant_id := :OLD.restaurant_id;
+        g_rest_ids.EXTEND;
+        g_rest_ids(g_rest_ids.LAST) := :OLD.restaurant_id;
     END IF;
-    
-    -- Calculate new average
-    SELECT NVL(ROUND(AVG(rating_value), 1), 0), COUNT(*)
-    INTO v_avg_rating, v_vote_count
-    FROM RATINGS
-    WHERE restaurant_id = v_restaurant_id;
-    
-    -- Update restaurant
-    UPDATE RESTAURANTS
-    SET avg_rating = v_avg_rating,
-        votes = v_vote_count
-    WHERE restaurant_id = v_restaurant_id;
-END;
+END AFTER EACH ROW;
+
+AFTER STATEMENT IS
+BEGIN
+    DECLARE v_rest_id VARCHAR2(36);
+    BEGIN
+        FOR i IN 1 .. g_rest_ids.COUNT LOOP
+            v_rest_id := g_rest_ids(i);
+
+            UPDATE restaurants r
+            SET (avg_rating, votes) =
+                ( SELECT NVL(ROUND(AVG(rating_value), 1), 0),
+                         COUNT(*)
+                  FROM ratings
+                  WHERE restaurant_id = v_rest_id )
+            WHERE r.restaurant_id = v_rest_id;
+        END LOOP;
+    END;
+END AFTER STATEMENT;
+
+END trg_update_avg_rating;
 /
 
 -- ============================================
--- STORED PROCEDURES
+-- STORED PROCEDURES (Oracle 11g Compatible)
 -- ============================================
 
--- Procedure: Get top restaurants by city
+-- Top restaurants (11g-safe: no FETCH FIRST)
 CREATE OR REPLACE PROCEDURE sp_get_top_restaurants(
     p_city IN VARCHAR2,
     p_limit IN NUMBER,
@@ -180,23 +194,26 @@ CREATE OR REPLACE PROCEDURE sp_get_top_restaurants(
 ) AS
 BEGIN
     OPEN p_cursor FOR
-        SELECT 
-            r.restaurant_id, 
-            r.name, 
-            r.address,
-            r.region,
-            r.avg_rating, 
-            r.votes,
-            r.price_range,
-            r.dining_type
-        FROM RESTAURANTS r
-        WHERE r.city = p_city
-        ORDER BY r.avg_rating DESC, r.votes DESC
-        FETCH FIRST p_limit ROWS ONLY;
+        SELECT *
+        FROM (
+            SELECT 
+                r.restaurant_id,
+                r.name,
+                r.address,
+                r.region,
+                r.avg_rating,
+                r.votes,
+                r.price_range,
+                r.dining_type
+            FROM RESTAURANTS r
+            WHERE r.city = p_city
+            ORDER BY r.avg_rating DESC, r.votes DESC
+        )
+        WHERE ROWNUM <= p_limit;
 END;
 /
-
--- Procedure: Get user statistics
+ 
+-- User statistics
 CREATE OR REPLACE PROCEDURE sp_get_user_stats(
     p_user_id IN VARCHAR2,
     p_review_count OUT NUMBER,
@@ -213,7 +230,7 @@ BEGIN
 END;
 /
 
--- Procedure: Get restaurant details with categories
+-- Restaurant details with categories
 CREATE OR REPLACE PROCEDURE sp_get_restaurant_details(
     p_restaurant_id IN VARCHAR2,
     p_cursor OUT SYS_REFCURSOR
@@ -235,7 +252,7 @@ END;
 /
 
 -- ============================================
--- VIEWS FOR ANALYTICS
+-- VIEWS
 -- ============================================
 
 CREATE OR REPLACE VIEW vw_restaurant_summary AS

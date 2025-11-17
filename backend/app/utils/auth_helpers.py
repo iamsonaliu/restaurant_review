@@ -32,19 +32,29 @@ def token_required(f):
     """Decorator for protected routes"""
     @wraps(f)
     def decorated(*args, **kwargs):
-        token = request.headers.get('Authorization')
-        
+        token = None
+
+        # Accept both "Authorization" and "authorization"
+        auth_header = request.headers.get('Authorization') or request.headers.get('authorization')
+
+        # Parse Bearer token
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+
+        # Fallback for older clients
+        if not token:
+            token = request.headers.get('x-access-token')
+
         if not token:
             return jsonify({'error': 'Token is missing'}), 401
-        
-        if token.startswith('Bearer '):
-            token = token[7:]
-        
+
+        # Decode token
         payload = decode_token(token)
         if not payload:
             return jsonify({'error': 'Invalid token'}), 401
-        
+
+        # Attach user_id to request
         request.user_id = payload['user_id']
         return f(*args, **kwargs)
-    
+
     return decorated

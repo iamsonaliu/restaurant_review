@@ -1,21 +1,45 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { restaurantAPI, reviewAPI } from '../services/api';
+import { restaurantAPI, reviewAPI, ratingAPI } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import { RatingForm } from '../components/restaurant/RatingForm';
 import { ReviewForm } from '../components/restaurant/ReviewForm';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 
 export default function RestaurantDetail() {
   const { id } = useParams();
+  const { isAuthenticated, user } = useAuth();
   const [restaurant, setRestaurant] = useState(null);
   const [reviews, setReviews] = useState([]);
+  const [userRating, setUserRating] = useState(null);
+  const [userReview, setUserReview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    fetchRestaurantDetails();
-    fetchReviews();
-  }, [id]);
+    fetchAllData();
+  }, [id, refreshKey]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchUserData();
+    }
+  }, [id, isAuthenticated]);
+
+  const fetchAllData = async () => {
+    setLoading(true);
+    try {
+      await Promise.all([
+        fetchRestaurantDetails(),
+        fetchReviews()
+      ]);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchRestaurantDetails = async () => {
     try {
@@ -24,8 +48,6 @@ export default function RestaurantDetail() {
     } catch (error) {
       console.error('Error fetching restaurant:', error);
       setRestaurant(null);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -36,6 +58,43 @@ export default function RestaurantDetail() {
     } catch (error) {
       console.error('Error fetching reviews:', error);
       setReviews([]);
+    }
+  };
+
+  const fetchUserData = async () => {
+    if (!isAuthenticated) return;
+    
+    try {
+      // Fetch user's ratings to find if they rated this restaurant
+      const userRatings = await ratingAPI.getUserRatings();
+      const thisRating = userRatings.find(r => r.restaurant_id === id);
+      setUserRating(thisRating || null);
+
+      // Find user's review in the reviews list
+      const thisReview = reviews.find(r => r.user_id === user?.user_id);
+      setUserReview(thisReview || null);
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+    }
+  };
+
+  const handleRatingSuccess = () => {
+    // Refresh restaurant details to get updated average
+    fetchRestaurantDetails();
+    // Refresh user data
+    if (isAuthenticated) {
+      fetchUserData();
+    }
+    // Force re-render
+    setRefreshKey(prev => prev + 1);
+  };
+
+  const handleReviewSuccess = () => {
+    // Refresh reviews list
+    fetchReviews();
+    // Refresh user data
+    if (isAuthenticated) {
+      fetchUserData();
     }
   };
 
@@ -50,6 +109,7 @@ export default function RestaurantDetail() {
   if (!restaurant) {
     return (
       <div className="container-custom py-12 text-center">
+        <div className="text-6xl mb-4">🍽️</div>
         <h2 className="text-2xl font-bold mb-4">Restaurant not found</h2>
         <Link to="/discover" className="btn btn-primary">
           Back to Discover
@@ -101,6 +161,17 @@ export default function RestaurantDetail() {
                   <span>{restaurant.avg_rating?.toFixed(1) || 'N/A'}</span>
                 </div>
                 <div className="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center gap-2">
+                  <span>📊</span>
+                  <span>{restaurant.votes} ratings</span>
+                </div>
+                <div className="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center gap-2">
+                  <span>💬</span>
+                  <span>{reviews.length} reviews</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 mb-4">
+                <div className="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center gap-2">
                   <span>📍</span>
                   <span>{restaurant.city}</span>
                 </div>
@@ -135,7 +206,6 @@ export default function RestaurantDetail() {
                   </div>
                   <span className="text-xs opacity-60">(₹{restaurant.price_range || 500} for two)</span>
                 </div>
-                <p>👥 {restaurant.votes} ratings</p>
               </div>
 
               {restaurant.address && (
@@ -173,10 +243,10 @@ export default function RestaurantDetail() {
 
         {/* Tabs */}
         <div className="mb-8">
-          <div className="flex gap-4 border-b" style={{ borderColor: 'var(--border)' }}>
+          <div className="flex gap-4 border-b overflow-x-auto" style={{ borderColor: 'var(--border)' }}>
             <button
               onClick={() => setActiveTab('overview')}
-              className={`pb-4 px-6 font-medium transition-colors ${
+              className={`pb-4 px-6 font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'overview'
                   ? 'border-b-2 border-orange-500 text-orange-500'
                   : 'opacity-70 hover:opacity-100'
@@ -186,7 +256,7 @@ export default function RestaurantDetail() {
             </button>
             <button
               onClick={() => setActiveTab('reviews')}
-              className={`pb-4 px-6 font-medium transition-colors ${
+              className={`pb-4 px-6 font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'reviews'
                   ? 'border-b-2 border-orange-500 text-orange-500'
                   : 'opacity-70 hover:opacity-100'
@@ -194,16 +264,18 @@ export default function RestaurantDetail() {
             >
               Reviews ({reviews.length})
             </button>
-            <button
-              onClick={() => setActiveTab('rate')}
-              className={`pb-4 px-6 font-medium transition-colors ${
-                activeTab === 'rate'
-                  ? 'border-b-2 border-orange-500 text-orange-500'
-                  : 'opacity-70 hover:opacity-100'
-              }`}
-            >
-              Rate & Review
-            </button>
+            {isAuthenticated && (
+              <button
+                onClick={() => setActiveTab('rate')}
+                className={`pb-4 px-6 font-medium transition-colors whitespace-nowrap ${
+                  activeTab === 'rate'
+                    ? 'border-b-2 border-orange-500 text-orange-500'
+                    : 'opacity-70 hover:opacity-100'
+                }`}
+              >
+                {userRating || userReview ? 'My Rating & Review' : 'Rate & Review'}
+              </button>
+            )}
           </div>
         </div>
 
@@ -262,14 +334,21 @@ export default function RestaurantDetail() {
                         {review.username?.charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1">
-                        <h4 className="font-semibold">{review.username}</h4>
-                        <p className="text-sm opacity-70 mb-2">
-                          {new Date(review.review_date).toLocaleDateString('en-IN', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                          })}
-                        </p>
+                        <div className="flex items-center justify-between mb-2">
+                          <div>
+                            <h4 className="font-semibold">{review.username}</h4>
+                            <p className="text-sm opacity-70">
+                              {new Date(review.review_date).toLocaleDateString('en-IN', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                              })}
+                            </p>
+                          </div>
+                          {review.user_id === user?.user_id && (
+                            <span className="badge badge-primary text-xs">Your Review</span>
+                          )}
+                        </div>
                         <p className="leading-relaxed">{review.review_text}</p>
                       </div>
                     </div>
@@ -279,21 +358,35 @@ export default function RestaurantDetail() {
             ) : (
               <div className="card text-center py-12">
                 <div className="text-5xl mb-4">💬</div>
-                <p className="text-xl opacity-70">No reviews yet. Be the first to review!</p>
+                <p className="text-xl opacity-70 mb-4">No reviews yet</p>
+                {isAuthenticated ? (
+                  <button 
+                    onClick={() => setActiveTab('rate')}
+                    className="btn btn-primary"
+                  >
+                    Be the first to review!
+                  </button>
+                ) : (
+                  <Link to="/login" className="btn btn-primary">
+                    Login to write a review
+                  </Link>
+                )}
               </div>
             )}
           </div>
         )}
 
-        {activeTab === 'rate' && (
+        {activeTab === 'rate' && isAuthenticated && (
           <div className="max-w-2xl mx-auto">
             <RatingForm 
               restaurantId={id} 
-              onSuccess={fetchRestaurantDetails}
+              onSuccess={handleRatingSuccess}
+              currentUserRating={userRating?.rating_value}
             />
             <ReviewForm 
               restaurantId={id}
-              onSuccess={fetchReviews}
+              onSuccess={handleReviewSuccess}
+              currentUserReview={userReview}
             />
           </div>
         )}
