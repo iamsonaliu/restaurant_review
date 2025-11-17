@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ratingAPI, restaurantAPI } from '../services/api';
+import { ratingAPI, restaurantAPI,reviewAPI} from '../services/api';
 import RestaurantCard from '../components/restaurant/RestaurantCard';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 
@@ -24,7 +24,11 @@ export default function Dashboard() {
     try {
       // Fetch user's ratings
       const ratingsResponse = await ratingAPI.getUserRatings();
-      const ratings = Array.isArray(ratingsResponse) ? ratingsResponse : [];
+const ratings = Array.isArray(ratingsResponse) ? ratingsResponse : [];
+
+// Fetch user's reviews (correct API)
+       const reviewResponse = await reviewAPI.getUserReviews();
+    const reviews = Array.isArray(reviewResponse) ? reviewResponse : [];
       
       // Get most common city from ratings
       let favoriteCity = 'Dehradun';
@@ -47,7 +51,7 @@ export default function Dashboard() {
 
       setStats({
         ratingsCount: ratings.length,
-        reviewsCount: 0, // Can be updated if we add review count API
+        reviewsCount: reviews.length, // Can be updated if we add review count API
         favoriteCity: favoriteCity
       });
     } catch (error) {

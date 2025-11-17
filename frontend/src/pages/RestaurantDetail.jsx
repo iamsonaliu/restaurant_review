@@ -6,6 +6,37 @@ import { RatingForm } from '../components/restaurant/RatingForm';
 import { ReviewForm } from '../components/restaurant/ReviewForm';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 
+function getRandomFoodImage(restaurant) {
+  const IMAGES = [
+    "https://images.pexels.com/photos/70497/pexels-photo-70497.jpeg",
+    "https://images.pexels.com/photos/461198/pexels-photo-461198.jpeg",
+    "https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg",
+    "https://images.pexels.com/photos/958545/pexels-photo-958545.jpeg",
+    "https://images.pexels.com/photos/109274/pexels-photo-109274.jpeg",
+    "https://images.pexels.com/photos/1639561/pexels-photo-1639561.jpeg",
+    "https://images.pexels.com/photos/277253/pexels-photo-277253.jpeg",
+    "https://images.pexels.com/photos/616353/pexels-photo-616353.jpeg",
+    "https://images.pexels.com/photos/675951/pexels-photo-675951.jpeg",
+    "https://images.pexels.com/photos/1624487/pexels-photo-1624487.jpeg",
+    "https://images.pexels.com/photos/262978/pexels-photo-262978.jpeg",
+    "https://images.pexels.com/photos/260922/pexels-photo-260922.jpeg",
+    "https://images.pexels.com/photos/941861/pexels-photo-941861.jpeg",
+    "https://images.pexels.com/photos/1128678/pexels-photo-1128678.jpeg",
+    "https://images.pexels.com/photos/245535/pexels-photo-245535.jpeg",
+    "https://images.pexels.com/photos/6267/menu-restaurant.jpg"
+  ];
+
+  const seed = restaurant.restaurant_id || restaurant.name || "default";
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash << 5) - hash + seed.charCodeAt(i);
+    hash |= 0;
+  }
+
+  const index = Math.abs(hash) % IMAGES.length;
+  return IMAGES[index] + "?auto=compress&cs=tinysrgb&w=600";
+}
+
 export default function RestaurantDetail() {
   const { id } = useParams();
   const { isAuthenticated, user } = useAuth();
@@ -148,8 +179,13 @@ export default function RestaurantDetail() {
         {/* Header */}
         <div className="card mb-8">
           <div className="flex flex-col md:flex-row gap-6">
-            <div className="w-full md:w-48 h-48 rounded-lg bg-gradient-to-br from-orange-100 to-pink-100 dark:from-orange-900 dark:to-pink-900 flex items-center justify-center text-7xl flex-shrink-0">
-              🍽️
+            <div className="w-full md:w-48 h-48 rounded-lg overflow-hidden shadow-sm">
+              <img
+                src={getRandomFoodImage(restaurant)}
+                alt={restaurant.name}
+                className="w-full h-full object-cover"
+                loading="lazy"
+              />
             </div>
 
             <div className="flex-1">

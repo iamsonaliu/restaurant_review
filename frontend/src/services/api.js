@@ -216,6 +216,9 @@ export const reviewAPI = {
     }
     throw new Error('Invalid arguments to reviewAPI.create');
   },
+   getUserReviews: async () => {
+    return apiCall('/reviews/user');
+  },
 };
 
 export const ratingAPI = {
